@@ -118,7 +118,11 @@ table th {
 }
 
 html {
+  /* clip (not hidden) contains horizontal overflow WITHOUT making the root a
+     scroll container — hidden would force overflow-y:auto and create nested
+     scrollers that freeze touch scrolling on mobile. hidden is the fallback. */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 body {
   font-family: var(--serif);
@@ -127,6 +131,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .shell {
@@ -1172,6 +1177,72 @@ footer {
   border-radius: 2px;
 }
 
+/* ---------- Mobile bottom tab bar (shown only ≤640px) ---------- */
+.tabbar {
+  display: none;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0 0;
+  color: var(--stone);
+  font-family: var(--serif);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease;
+}
+.tab-item svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tab-item.active {
+  color: var(--brand);
+}
+.tab-item:active {
+  opacity: 0.6;
+}
+.tab-add {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  margin-top: -26px; /* raise above the bar */
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--ivory);
+  border: 3px solid var(--parchment);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(27, 54, 93, 0.4);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.tab-add svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.tab-add:active {
+  transform: scale(0.92);
+}
+
 /* ---------- Floating add button + bottom sheet (mobile) ---------- */
 .fab {
   position: fixed;
@@ -1266,13 +1337,63 @@ footer {
 
 /* Phone: stack the header, put the month stepper on its own full-width row */
 @media (max-width: 640px) {
-  .shell {
-    padding: 22px 16px 48px;
+  /* Native-app touches: no blue tap flash, no rubber-band chaining. */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
+  body {
+    overscroll-behavior-y: none;
+  }
+  .shell {
+    /* leave room for the fixed bottom tab bar (+ the phone's home indicator) */
+    padding: 0 16px calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Sticky app bar */
   .topbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 14px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -16px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
+    background: var(--parchment);
+  }
+
+  /* ---- Tab switching: each tab shows one focused screen ---- */
+  .tab-home .stats-panel {
+    display: none;
+  }
+  .tab-insights .metrics,
+  .tab-insights .grid {
+    display: none;
+  }
+  .tab-insights .stats-panel {
+    margin-top: 8px;
+  }
+
+  /* ---- Bottom tab bar ---- */
+  .tabbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 46;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding: 0 18px env(safe-area-inset-bottom, 0px);
+    background: var(--ivory);
+    border-top: 1px solid var(--border-soft);
+    box-shadow: 0 -4px 20px rgba(20, 20, 19, 0.06);
+  }
+  .fab {
+    display: none; /* replaced by the tab bar's center + */
+  }
+  footer {
+    display: none; /* the tab bar is the mobile bottom chrome */
   }
   .topbar-right {
     width: 100%;
