@@ -1460,18 +1460,10 @@ footer {
     padding-top: 16px;
   }
 
-  /* Focus on adding: hide inline form, show a prominent floating + button
-     that clears the phone's bottom browser/nav bar via the safe-area inset. */
+  /* Focus on adding: hide the inline form; adding happens via the tab bar's
+     center + button, so the floating .fab stays hidden (see rule above). */
   .add-panel {
     display: none;
-  }
-  .fab {
-    display: flex;
-    width: 60px;
-    height: 60px;
-    font-size: 32px;
-    right: 16px;
-    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
   .dc-tip {
     max-width: min(220px, 72vw);
