@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pillStyle } from "@/lib/colors";
 import { symbolFor } from "@/lib/currencies";
+import { useTheme } from "@/lib/theme";
 import CategoriesModal, { type Cat } from "./CategoriesModal";
 import SettingsModal, { type Prefs } from "./SettingsModal";
 import ExpenseForm from "./ExpenseForm";
@@ -63,6 +64,7 @@ export default function Dashboard({
   const [showAdd, setShowAdd] = useState(false); // mobile add-expense sheet
   const [editing, setEditing] = useState<Expense | null>(null); // expense being edited
 
+  const { theme, toggle: toggleTheme } = useTheme();
   const symbol = symbolFor(prefs.currency);
   const money = (n: number) =>
     symbol + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -243,6 +245,16 @@ export default function Dashboard({
                   <div className="am-name">{workspace}</div>
                   <div className="am-sub">Connected to Notion</div>
                 </div>
+                <button
+                  className="am-item am-toggle"
+                  role="menuitemcheckbox"
+                  aria-checked={theme === "dark"}
+                  onClick={toggleTheme}
+                >
+                  <span>Dark mode</span>
+                  <span className={`am-switch${theme === "dark" ? " on" : ""}`} aria-hidden="true" />
+                </button>
+                <div className="am-divider" />
                 <button
                   className="am-item"
                   role="menuitem"

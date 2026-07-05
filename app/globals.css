@@ -19,6 +19,96 @@
   --radius: 8px;
   --radius-lg: 12px;
   --whisper: 0 4px 24px rgba(20, 20, 19, 0.05);
+  color-scheme: light;
+}
+
+/* ---------- Dark theme ---------- */
+/* Same semantic tokens, dark values. Set on <html> by the pre-paint script. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --parchment: #161614; /* page + inset input background */
+  --ivory: #201f1d; /* elevated surfaces: cards, panels, menus, modals */
+  --warm-sand: #302f2b; /* hover fills, secondary buttons, avatar */
+  --brand: #8ab0dd; /* accent — light enough to read on dark, dark text on fills */
+  --ink-light: #a9c6e8;
+  --near-black: #eae7dd; /* primary text (warm off-white) */
+  --dark-warm: #c9c6bd; /* secondary text */
+  --olive: #a8a59c; /* subtext */
+  --stone: #8f8c83; /* tertiary text */
+  --border: #38362f;
+  --border-soft: #2c2b27;
+  --positive: #6faa80;
+  --negative: #cf8a8a;
+  --whisper: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Smooth the toggle. Attribute is set pre-paint, so load doesn't animate. */
+body,
+.metric-card,
+.panel,
+.account-menu,
+.modal,
+.sheet,
+.month-stepper,
+.field input,
+.field select,
+.cat-name,
+.cat-color,
+table td,
+table th {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Rules with baked-in colors that tokens don't reach. */
+:root[data-theme="dark"] .avatar:hover,
+:root[data-theme="dark"] .btn.secondary:hover,
+:root[data-theme="dark"] .month-stepper .step:hover:not(:disabled),
+:root[data-theme="dark"] .am-item:hover {
+  background: #34332e;
+}
+:root[data-theme="dark"] .btn:hover,
+:root[data-theme="dark"] .fab:hover {
+  background: #a9c6e8;
+}
+:root[data-theme="dark"] .am-item.danger:hover {
+  background: #3a2626;
+}
+:root[data-theme="dark"] .btn.danger:hover {
+  background: #b56a6a;
+}
+:root[data-theme="dark"] tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.035);
+}
+:root[data-theme="dark"] .month-stepper .step:disabled {
+  color: #55534c;
+}
+:root[data-theme="dark"] .account-menu,
+:root[data-theme="dark"] .modal {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+}
+:root[data-theme="dark"] .sheet {
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme="dark"] .dc-tip {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme="dark"] .notice.error {
+  background: #2e1f1f;
+  color: #e2a9a9;
+  border-color: #4a3131;
+}
+:root[data-theme="dark"] .notice.ok {
+  background: #1e2a22;
+  color: #9fccaf;
+  border-color: #31463a;
+}
+/* Focus rings: brand-tinted glow, lightened for dark surfaces. */
+:root[data-theme="dark"] .avatar[aria-expanded="true"],
+:root[data-theme="dark"] .field input:focus,
+:root[data-theme="dark"] .field select:focus,
+:root[data-theme="dark"] .cat-name:focus,
+:root[data-theme="dark"] .cat-color:focus {
+  box-shadow: 0 0 0 3px rgba(138, 176, 221, 0.22);
 }
 
 * {
@@ -27,12 +117,16 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+}
 body {
   font-family: var(--serif);
   background: var(--parchment);
   color: var(--near-black);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 .shell {
@@ -172,6 +266,41 @@ body {
 }
 .am-item.danger:hover {
   background: #f2e6e6;
+}
+.am-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.am-switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--warm-sand);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.am-switch::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fbfaf5;
+  box-shadow: 0 1px 2px rgba(20, 20, 19, 0.3);
+  transition: transform 0.18s ease;
+}
+.am-switch.on {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+.am-switch.on::after {
+  transform: translateX(16px);
 }
 .am-divider {
   height: 1px;
@@ -1161,11 +1290,21 @@ footer {
   .panel {
     padding: 18px 16px;
   }
+  /* Clean 2×2 metrics grid — compact, no orphaned card. "Spent" stays
+     visually primary via the accent color, no full-width span needed. */
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
   .metric-card {
     padding: 14px 16px;
   }
   .metric-card .value {
     font-size: 24px;
+  }
+  .metric-card.accent .value {
+    font-size: 26px;
   }
 
   /* Insights stack on phones */
@@ -1179,25 +1318,42 @@ footer {
     border-top: 1px solid var(--border-soft);
     padding-top: 18px;
   }
+  /* Drop flex on mobile: a flex item won't shrink below the grid's 636px
+     min-width, so it escapes the card. As a plain block, .hm-scroll clips
+     and scrolls its own content instead. */
   .hm-body {
-    flex-direction: column;
-    gap: 18px;
+    display: block;
+  }
+  .hm-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .hm-stats {
-    flex: none;
     width: 100%;
+    margin-top: 18px;
     border-left: none;
     padding-left: 0;
     border-top: 1px solid var(--border-soft);
     padding-top: 16px;
   }
 
-  /* Focus on adding: hide inline form, show floating + button */
+  /* Focus on adding: hide inline form, show a prominent floating + button
+     that clears the phone's bottom browser/nav bar via the safe-area inset. */
   .add-panel {
     display: none;
   }
   .fab {
     display: flex;
+    width: 60px;
+    height: 60px;
+    font-size: 32px;
+    right: 16px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  .dc-tip {
+    max-width: min(220px, 72vw);
   }
 
   /* Reorder: metrics → transactions → insights (charts last) */
@@ -1248,9 +1404,6 @@ footer {
 
 /* Narrow phone */
 @media (max-width: 400px) {
-  .metrics {
-    grid-template-columns: 1fr;
-  }
   .bar-row {
     grid-template-columns: 92px 1fr 60px;
     gap: 10px;

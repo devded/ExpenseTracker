@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { swatchColor } from "@/lib/colors";
+import { useTheme } from "@/lib/theme";
 
 type Expense = { id: string; amount: number; date: string | null; category: string | null };
 
@@ -9,7 +10,9 @@ const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-const HEAT_COLORS = ["#edece4", "#d6dfea", "#a9bdd6", "#5f7fa6", "#1b365d"];
+// Empty → high intensity ramps, one per theme.
+const HEAT_LIGHT = ["#edece4", "#d6dfea", "#a9bdd6", "#5f7fa6", "#1b365d"];
+const HEAT_DARK = ["#26251f", "#2b3f57", "#3a5f8f", "#5a83bd", "#8fb3e0"];
 const HEAT_WEEKS = 53;
 
 function pad(n: number) {
@@ -71,6 +74,8 @@ export default function Stats({
 }) {
   const whole = (n: number) => symbol + Math.round(n).toLocaleString();
   const [hoverDay, setHoverDay] = useState<number | null>(null);
+  const { theme } = useTheme();
+  const heatColors = theme === "dark" ? HEAT_DARK : HEAT_LIGHT;
 
   const totalsByIso = useMemo(() => {
     const m = new Map<string, number>();
@@ -346,7 +351,7 @@ export default function Stats({
                       <div
                         key={cell.iso}
                         className="hm-cell"
-                        style={{ background: lv < 0 ? "transparent" : HEAT_COLORS[lv] }}
+                        style={{ background: lv < 0 ? "transparent" : heatColors[lv] }}
                         title={lv < 0 ? "" : `${cell.iso}: ${whole(cell.total || 0)}`}
                       />
                     );
@@ -379,7 +384,7 @@ export default function Stats({
         </div>
         <div className="hm-legend">
           <span>Less</span>
-          {HEAT_COLORS.map((c) => (
+          {heatColors.map((c) => (
             <span key={c} className="hm-swatch" style={{ background: c }} />
           ))}
           <span>More</span>
