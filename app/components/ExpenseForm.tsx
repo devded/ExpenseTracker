@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import type { Cat } from "./CategoriesModal";
 
+type Expense = {
+  id: string;
+  name: string;
+  amount: number;
+  category: string | null;
+  date: string | null;
+  notes?: string;
+};
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -10,49 +19,86 @@ function todayISO() {
 export default function ExpenseForm({
   categories,
   symbol,
-  onCreated,
+  initial,
+  onSaved,
+  onDeleted,
   onClose,
 }: {
   categories: Cat[];
   symbol: string;
-  onCreated: (expense: any) => void;
+  initial?: Expense | null; // present → edit mode
+  onSaved: (expense: any) => void;
+  onDeleted?: (id: string) => void;
   onClose?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(categories[0]?.name || "");
-  const [date, setDate] = useState(todayISO());
+  const editing = !!initial?.id;
+
+  const [name, setName] = useState(initial?.name || "");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [category, setCategory] = useState(initial?.category || categories[0]?.name || "");
+  const [date, setDate] = useState(initial?.date || todayISO());
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Keep the selected category valid as categories load / change.
+  // Keep the selected category valid as categories load / change (add mode only).
   useEffect(() => {
-    if (categories.length && !categories.some((c) => c.name === category)) {
+    if (!editing && categories.length && !categories.some((c) => c.name === category)) {
       setCategory(categories[0].name);
     }
-  }, [categories, category]);
+  }, [categories, category, editing]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/notion/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, amount: Number(amount), category, date }),
-      });
+      const res = await fetch(
+        editing ? `/api/notion/expenses/${initial!.id}` : "/api/notion/expenses",
+        {
+          method: editing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, amount: Number(amount), category, date }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not save.");
-      onCreated(data.expense);
-      setName("");
-      setAmount("");
-      setDate(todayISO());
+      onSaved(data.expense);
+      if (!editing) {
+        setName("");
+        setAmount("");
+        setDate(todayISO());
+      }
       onClose?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function remove() {
+    if (!editing) return;
+    if (!confirmDel) {
+      setConfirmDel(true);
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/notion/expenses/${initial!.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not delete.");
+      }
+      onDeleted?.(initial!.id);
+      onClose?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete.");
+      setConfirmDel(false);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -67,7 +113,7 @@ export default function ExpenseForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          autoFocus={!!onClose}
+          autoFocus={!!onClose && !editing}
         />
       </div>
       <div className="field">
@@ -109,9 +155,20 @@ export default function ExpenseForm({
         />
       </div>
       {error && <div className="notice error">{error}</div>}
-      <button className="btn" type="submit" disabled={saving}>
-        {saving ? "Saving…" : "Add expense"}
+      <button className="btn" type="submit" disabled={saving || deleting}>
+        {saving ? "Saving…" : editing ? "Save changes" : "Add expense"}
       </button>
+      {editing && onDeleted && (
+        <button
+          type="button"
+          className={`btn ${confirmDel ? "danger" : "secondary"}`}
+          style={{ marginTop: 10 }}
+          onClick={remove}
+          disabled={deleting || saving}
+        >
+          {deleting ? "Deleting…" : confirmDel ? "Tap again to confirm delete" : "Delete expense"}
+        </button>
+      )}
     </form>
   );
 }

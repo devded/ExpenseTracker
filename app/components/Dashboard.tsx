@@ -61,6 +61,7 @@ export default function Dashboard({
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
 
   const [showAdd, setShowAdd] = useState(false); // mobile add-expense sheet
+  const [editing, setEditing] = useState<Expense | null>(null); // expense being edited
 
   const symbol = symbolFor(prefs.currency);
   const money = (n: number) =>
@@ -124,14 +125,22 @@ export default function Dashboard({
     return (n: string | null) => (n ? map.get(n) || "default" : "gray");
   }, [categories]);
 
-  function handleCreated(expense: Expense) {
-    setExpenses((prev) => [expense, ...prev]);
-    // jump the view to the month we just added into
+  // Insert a new expense or replace an edited one (upsert by id).
+  function handleSaved(expense: Expense) {
+    setExpenses((prev) => {
+      const exists = prev.some((e) => e.id === expense.id);
+      return exists ? prev.map((e) => (e.id === expense.id ? expense : e)) : [expense, ...prev];
+    });
+    // jump the view to the affected month so the change is visible
     if (expense.date) {
       const [y, m] = expense.date.split("-").map(Number);
       setYear(y);
       setMonth(m);
     }
+  }
+
+  function handleDeleted(id: string) {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
   function stepMonth(delta: number) {
@@ -311,7 +320,7 @@ export default function Dashboard({
         {/* Add expense — inline on desktop, hidden on mobile (use the + button) */}
         <section className="panel add-panel">
           <h2 className="section-title">Add an expense</h2>
-          <ExpenseForm categories={categories} symbol={symbol} onCreated={handleCreated} />
+          <ExpenseForm categories={categories} symbol={symbol} onSaved={handleSaved} />
         </section>
 
         {/* Transactions for the selected month */}
@@ -350,7 +359,19 @@ export default function Dashboard({
                   </tr>
                 ) : (
                   monthRows.map((x) => (
-                    <tr key={x.id}>
+                    <tr
+                      key={x.id}
+                      className="row-click"
+                      onClick={() => setEditing(x)}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setEditing(x);
+                        }
+                      }}
+                      title="Edit expense"
+                    >
                       <td>
                         <div className="tx-name">{x.name || "Untitled"}</div>
                         <div className="tx-date">{formatDate(x.date)}</div>
@@ -408,8 +429,30 @@ export default function Dashboard({
             <ExpenseForm
               categories={categories}
               symbol={symbol}
-              onCreated={handleCreated}
+              onSaved={handleSaved}
               onClose={() => setShowAdd(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="sheet-overlay" onClick={() => setEditing(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" />
+            <div className="sheet-head">
+              <h2 className="section-title">Edit expense</h2>
+              <button className="icon-x" onClick={() => setEditing(null)} aria-label="Close">
+                ×
+              </button>
+            </div>
+            <ExpenseForm
+              categories={categories}
+              symbol={symbol}
+              initial={editing}
+              onSaved={handleSaved}
+              onDeleted={handleDeleted}
+              onClose={() => setEditing(null)}
             />
           </div>
         </div>

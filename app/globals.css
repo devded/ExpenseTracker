@@ -390,6 +390,13 @@ tbody tr:last-child td {
 tbody tr:hover td {
   background: rgba(27, 54, 93, 0.025);
 }
+tr.row-click {
+  cursor: pointer;
+}
+tr.row-click:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
 .tx-name {
   color: var(--near-black);
 }

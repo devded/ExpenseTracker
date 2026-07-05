@@ -121,16 +121,30 @@ export default function Stats({
       if (total <= t3) return 3;
       return 4;
     };
-    // month labels above columns
-    const labels: { w: number; text: string }[] = [];
+    // Month labels above columns. Keep them ≥3 columns apart so they never
+    // overlap; drop the tiny leading partial month in favor of the next one.
+    const MIN_GAP = 3;
+    const starts: { w: number; m: number }[] = [];
     let prevMonth = -1;
     cols.forEach((col, w) => {
       const m = col[0].date.getMonth();
       if (m !== prevMonth) {
-        labels.push({ w, text: MONTHS_SHORT[m] });
+        starts.push({ w, m });
         prevMonth = m;
       }
     });
+    const labels: { w: number; text: string }[] = [];
+    for (const s of starts) {
+      const last = labels[labels.length - 1];
+      if (last && s.w - last.w < MIN_GAP) {
+        // Too close: if it's the cramped leading label, replace it; else skip.
+        if (labels.length === 1 && last.w < MIN_GAP) {
+          labels[0] = { w: s.w, text: MONTHS_SHORT[s.m] };
+        }
+        continue;
+      }
+      labels.push({ w: s.w, text: MONTHS_SHORT[s.m] });
+    }
     return { cols, level, labels };
   }, [totalsByIso]);
 
