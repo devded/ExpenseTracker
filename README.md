@@ -195,6 +195,8 @@ All routes are server-only and read the token from the session cookie.
 | `POST /api/notion/disconnect` | — | `{ connected: false }` |
 | `GET /api/notion/expenses` | — | `{ expenses: Expense[] }` |
 | `POST /api/notion/expenses` | `{ name, amount, category, date, notes? }` | `{ expense }` |
+| `PATCH /api/notion/expenses/:id` | `{ name, amount, category, date }` | `{ expense }` |
+| `DELETE /api/notion/expenses/:id` | — | `{ ok: true }` (archives the page) |
 | `GET /api/notion/categories` | — | `{ categories: {id?, name, color}[] }` |
 | `PUT /api/notion/categories` | `{ categories: {id?, name, color}[] }` | `{ categories }` |
 | `GET /api/notion/settings` | — | `{ prefs: { currency, budget } }` |
@@ -251,7 +253,6 @@ external fonts are bundled (system serif stack only).
 
 ## Roadmap
 
-- Edit / delete individual expenses
 - Per-category budgets
 - Encrypted token storage and/or Notion OAuth
 - CSV export
