@@ -40,6 +40,20 @@ function shortDate(iso: string) {
   const [, m, d] = iso.split("-").map(Number);
   return `${MONTHS_SHORT[m - 1]} ${d}`;
 }
+function quantile(sorted: number[], q: number) {
+  if (!sorted.length) return 0;
+  const idx = (sorted.length - 1) * q;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+// Scale to a robust cap so rare outliers don't flatten normal days; days above
+// the cap clip to 100% (and get an "over" marker). Floor keeps small days visible.
+function barPct(total: number, scaleMax: number) {
+  if (total <= 0) return 0;
+  return Math.min(100, Math.max(6, (total / scaleMax) * 100));
+}
 
 export default function Stats({
   expenses,
@@ -90,8 +104,13 @@ export default function Stats({
       const iso = `${year}-${pad(month)}-${pad(day)}`;
       return { day, total: totalsByIso.get(iso) || 0 };
     });
-    const max = Math.max(1, ...rows.map((r) => r.total));
-    return { rows, max };
+    const nz = rows
+      .map((r) => r.total)
+      .filter((t) => t > 0)
+      .sort((a, b) => a - b);
+    // Scale to the 90th percentile so a rare big day doesn't flatten the rest.
+    const scaleMax = Math.max(1, quantile(nz, 0.9));
+    return { rows, scaleMax };
   }, [totalsByIso, year, month]);
 
   // ---- Calendar heatmap (last ~12 months) ----
@@ -226,9 +245,14 @@ export default function Stats({
               <div
                 className="dc-col"
                 key={r.day}
-                title={`${MONTHS_SHORT[month - 1]} ${r.day}: ${whole(r.total)}`}
+                title={`${MONTHS_SHORT[month - 1]} ${r.day}: ${whole(r.total)}${
+                  r.total > daily.scaleMax ? " (above typical)" : ""
+                }`}
               >
-                <div className="dc-bar" style={{ height: `${(r.total / daily.max) * 100}%` }} />
+                <div
+                  className={`dc-bar${r.total > daily.scaleMax ? " over" : ""}`}
+                  style={{ height: `${barPct(r.total, daily.scaleMax)}%` }}
+                />
               </div>
             ))}
           </div>
