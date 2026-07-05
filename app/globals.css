@@ -887,15 +887,51 @@ footer {
   color: var(--stone);
   margin-bottom: 14px;
 }
+.hm-body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
 .hm-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   padding-bottom: 4px;
+}
+.hm-stats {
+  flex: 0 0 188px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 14px 16px;
+  align-content: start;
+  border-left: 1px solid var(--border-soft);
+  padding-left: 20px;
+}
+.hm-stat {
+  min-width: 0;
+}
+.hs-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.hs-label {
+  font-size: 10px;
+  color: var(--stone);
+  margin-top: 3px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hm-labels {
   position: relative;
   height: 14px;
-  margin-left: 0;
-  min-width: 795px;
+  width: 100%;
+  min-width: 636px;
 }
 .hm-label {
   position: absolute;
@@ -904,16 +940,19 @@ footer {
 }
 .hm-grid {
   display: flex;
-  gap: 3px;
-  min-width: 795px;
+  gap: 2px;
+  width: 100%;
+  min-width: 636px;
 }
 .hm-col {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .hm-cell {
-  width: 12px;
+  width: 100%;
   height: 12px;
   border-radius: 2px;
 }
@@ -1067,6 +1106,18 @@ footer {
     padding-left: 0;
     border-top: 1px solid var(--border-soft);
     padding-top: 18px;
+  }
+  .hm-body {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .hm-stats {
+    flex: none;
+    width: 100%;
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 16px;
   }
 
   /* Focus on adding: hide inline form, show floating + button */
