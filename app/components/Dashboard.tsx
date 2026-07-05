@@ -63,6 +63,11 @@ export default function Dashboard({
 
   const [showAdd, setShowAdd] = useState(false); // mobile add-expense sheet
   const [editing, setEditing] = useState<Expense | null>(null); // expense being edited
+  const [mobileTab, setMobileTab] = useState<"home" | "insights">("home"); // bottom-nav tab (mobile only)
+  function selectTab(tab: "home" | "insights") {
+    setMobileTab(tab);
+    window.scrollTo({ top: 0 });
+  }
 
   const { theme, toggle: toggleTheme } = useTheme();
   const symbol = symbolFor(prefs.currency);
@@ -139,6 +144,8 @@ export default function Dashboard({
       setYear(y);
       setMonth(m);
     }
+    // on mobile, surface the Home tab where the transaction list lives
+    setMobileTab("home");
   }
 
   function handleDeleted(id: string) {
@@ -204,7 +211,7 @@ export default function Dashboard({
   const initials = workspace.slice(0, 2).toUpperCase();
 
   return (
-    <div className="shell">
+    <div className={`shell tab-${mobileTab}`}>
       {/* Header */}
       <header className="topbar">
         <div className="brand-mark">
@@ -424,7 +431,37 @@ export default function Dashboard({
 
       <footer>Ledger · backed by your Notion workspace</footer>
 
-      {/* Floating add button (mobile) + bottom sheet */}
+      {/* Mobile bottom tab bar: Home / Insights with a raised center Add button */}
+      <nav className="tabbar" aria-label="Primary">
+        <button
+          className={`tab-item${mobileTab === "home" ? " active" : ""}`}
+          onClick={() => selectTab("home")}
+          aria-current={mobileTab === "home" ? "page" : undefined}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 10.5 12 3l9 7.5" />
+            <path d="M5 9.5V20h5v-6h4v6h5V9.5" />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button className="tab-add" onClick={() => setShowAdd(true)} aria-label="Add expense">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        <button
+          className={`tab-item${mobileTab === "insights" ? " active" : ""}`}
+          onClick={() => selectTab("insights")}
+          aria-current={mobileTab === "insights" ? "page" : undefined}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+          </svg>
+          <span>Insights</span>
+        </button>
+      </nav>
+
+      {/* Floating add button (desktop-hidden; mobile uses the tab bar) + bottom sheet */}
       <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add expense">
         +
       </button>
