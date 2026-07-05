@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { swatchColor } from "@/lib/colors";
 
-type Expense = { id: string; amount: number; date: string | null };
+type Expense = { id: string; amount: number; date: string | null; category: string | null };
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -60,13 +61,16 @@ export default function Stats({
   symbol,
   year,
   month,
+  colorOf,
 }: {
   expenses: Expense[];
   symbol: string;
   year: number;
   month: number; // 1-based, drives the daily chart
+  colorOf: (name: string | null) => string;
 }) {
   const whole = (n: number) => symbol + Math.round(n).toLocaleString();
+  const [hoverDay, setHoverDay] = useState<number | null>(null);
 
   const totalsByIso = useMemo(() => {
     const m = new Map<string, number>();
@@ -99,10 +103,26 @@ export default function Stats({
   // ---- Daily spend for the selected month ----
   const daily = useMemo(() => {
     const dim = daysInMonth(year, month);
+    // day → (category → amount) for the hover breakdown
+    const byDayCat = new Map<number, Map<string | null, number>>();
+    for (const e of expenses) {
+      if (!e.date) continue;
+      const [y, m, d] = e.date.split("T")[0].split("-").map(Number);
+      if (y !== year || m !== month) continue;
+      let cm = byDayCat.get(d);
+      if (!cm) byDayCat.set(d, (cm = new Map()));
+      cm.set(e.category, (cm.get(e.category) || 0) + (e.amount || 0));
+    }
     const rows = Array.from({ length: dim }, (_, i) => {
       const day = i + 1;
-      const iso = `${year}-${pad(month)}-${pad(day)}`;
-      return { day, total: totalsByIso.get(iso) || 0 };
+      const cm = byDayCat.get(day);
+      const cats = cm
+        ? [...cm.entries()]
+            .map(([cat, total]) => ({ cat, total }))
+            .sort((a, b) => b.total - a.total)
+        : [];
+      const total = cats.reduce((s, c) => s + c.total, 0);
+      return { day, total, cats };
     });
     const nz = rows
       .map((r) => r.total)
@@ -111,7 +131,7 @@ export default function Stats({
     // Scale to the 90th percentile so a rare big day doesn't flatten the rest.
     const scaleMax = Math.max(1, quantile(nz, 0.9));
     return { rows, scaleMax };
-  }, [totalsByIso, year, month]);
+  }, [expenses, year, month]);
 
   // ---- Calendar heatmap (last ~12 months) ----
   const heat = useMemo(() => {
@@ -240,14 +260,12 @@ export default function Stats({
           <div className="dc-title">
             Daily spend · {MONTHS_SHORT[month - 1]} {year}
           </div>
-          <div className="dc-bars">
+          <div className="dc-bars" onMouseLeave={() => setHoverDay(null)}>
             {daily.rows.map((r) => (
               <div
                 className="dc-col"
                 key={r.day}
-                title={`${MONTHS_SHORT[month - 1]} ${r.day}: ${whole(r.total)}${
-                  r.total > daily.scaleMax ? " (above typical)" : ""
-                }`}
+                onMouseEnter={() => setHoverDay(r.day)}
               >
                 <div
                   className={`dc-bar${r.total > daily.scaleMax ? " over" : ""}`}
@@ -255,6 +273,45 @@ export default function Stats({
                 />
               </div>
             ))}
+            {(() => {
+              if (hoverDay == null) return null;
+              const r = daily.rows[hoverDay - 1];
+              if (!r) return null;
+              const n = daily.rows.length;
+              const frac = (hoverDay - 0.5) / n;
+              const align = frac < 0.2 ? "start" : frac > 0.8 ? "end" : "mid";
+              return (
+                <div
+                  className="dc-tip"
+                  data-align={align}
+                  style={{ left: `${frac * 100}%` }}
+                >
+                  <div className="dc-tip-head">
+                    {MONTHS_SHORT[month - 1]} {r.day}
+                  </div>
+                  {r.cats.length ? (
+                    r.cats.map((c) => (
+                      <div className="dc-tip-row" key={c.cat ?? "__none"}>
+                        <span
+                          className="dc-tip-dot"
+                          style={{ background: swatchColor(colorOf(c.cat)) }}
+                        />
+                        <span className="dc-tip-cat">{c.cat || "Uncategorized"}</span>
+                        <span className="dc-tip-amt">{whole(c.total)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="dc-tip-empty">No spending</div>
+                  )}
+                  {r.cats.length > 1 && (
+                    <div className="dc-tip-total">
+                      <span>Total</span>
+                      <span>{whole(r.total)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div className="dc-axis">
             <span>1</span>

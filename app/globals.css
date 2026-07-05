@@ -848,6 +848,74 @@ footer {
   align-items: flex-end;
   gap: 3px;
   height: 120px;
+  position: relative;
+}
+/* Hover breakdown tooltip */
+.dc-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  min-width: 150px;
+  max-width: 220px;
+  padding: 10px 12px;
+  background: var(--ivory);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(27, 54, 93, 0.14);
+  pointer-events: none;
+}
+.dc-tip[data-align="mid"] {
+  transform: translateX(-50%);
+}
+.dc-tip[data-align="end"] {
+  transform: translateX(-100%);
+}
+.dc-tip-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--stone);
+  margin-bottom: 8px;
+}
+.dc-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+.dc-tip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.dc-tip-cat {
+  flex: 1;
+  color: var(--dark-warm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dc-tip-amt {
+  color: var(--dark-warm);
+  font-variant-numeric: tabular-nums;
+}
+.dc-tip-empty {
+  font-size: 12.5px;
+  color: var(--stone);
+}
+.dc-tip-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dark-warm);
+  font-variant-numeric: tabular-nums;
 }
 .dc-col {
   flex: 1;

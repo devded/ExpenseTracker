@@ -312,7 +312,7 @@ export default function Dashboard({
 
       {/* Insights */}
       {!loading && !error && (
-        <Stats expenses={expenses} symbol={symbol} year={year} month={month} />
+        <Stats expenses={expenses} symbol={symbol} year={year} month={month} colorOf={colorOf} />
       )}
 
       {/* Body */}
