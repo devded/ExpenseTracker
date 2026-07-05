@@ -857,10 +857,14 @@ footer {
 }
 .dc-bar {
   width: 100%;
-  min-height: 2px;
+  min-height: 0;
   background: var(--brand);
   border-radius: 2px 2px 0 0;
   transition: height 0.3s ease;
+}
+/* Days above the 90th-percentile cap clip to full height with a lighter tip. */
+.dc-bar.over {
+  background: linear-gradient(to top, var(--brand) calc(100% - 4px), #9db4d0 0);
 }
 .dc-col:hover .dc-bar {
   background: var(--ink-light);
