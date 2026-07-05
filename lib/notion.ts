@@ -327,6 +327,21 @@ export type NewExpense = {
   notes?: string;
 };
 
+function buildExpenseProperties(input: NewExpense, titleKey: string): Record<string, any> {
+  const properties: Record<string, any> = {
+    [titleKey]: { title: [{ text: { content: input.name || "Untitled" } }] },
+    Amount: { number: Number.isFinite(input.amount) ? input.amount : 0 },
+    Date: { date: { start: input.date } },
+    // Set (or clear) the category select.
+    Category: input.category ? { select: { name: input.category } } : { select: null },
+  };
+  // Only touch Notes when explicitly provided (preserves existing notes on edit).
+  if (input.notes !== undefined) {
+    properties.Notes = { rich_text: input.notes ? [{ text: { content: input.notes } }] : [] };
+  }
+  return properties;
+}
+
 export async function createExpense(
   token: string,
   databaseId: string,
@@ -336,17 +351,36 @@ export async function createExpense(
   const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
   const titleKey = findTitleKey(db.properties || {});
 
-  const properties: Record<string, any> = {
-    [titleKey]: { title: [{ text: { content: input.name || "Untitled" } }] },
-    Amount: { number: Number.isFinite(input.amount) ? input.amount : 0 },
-    Date: { date: { start: input.date } },
-  };
-  if (input.category) properties.Category = { select: { name: input.category } };
-  if (input.notes) properties.Notes = { rich_text: [{ text: { content: input.notes } }] };
-
   const page = await notionFetch(token, "/pages", {
     method: "POST",
-    body: JSON.stringify({ parent: { database_id: databaseId }, properties }),
+    body: JSON.stringify({
+      parent: { database_id: databaseId },
+      properties: buildExpenseProperties(input, titleKey),
+    }),
   });
   return readExpense(page);
+}
+
+export async function updateExpense(
+  token: string,
+  databaseId: string,
+  pageId: string,
+  input: NewExpense,
+): Promise<Expense> {
+  const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
+  const titleKey = findTitleKey(db.properties || {});
+
+  const page = await notionFetch(token, `/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ properties: buildExpenseProperties(input, titleKey) }),
+  });
+  return readExpense(page);
+}
+
+// "Delete" = archive the page (removes it from the database).
+export async function deleteExpense(token: string, pageId: string): Promise<void> {
+  await notionFetch(token, `/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived: true }),
+  });
 }
