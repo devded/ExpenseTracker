@@ -36,6 +36,10 @@ function startOfWeek(d: Date) {
 function daysInMonth(year: number, month1: number) {
   return new Date(year, month1, 0).getDate();
 }
+function shortDate(iso: string) {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${MONTHS_SHORT[m - 1]} ${d}`;
+}
 
 export default function Stats({
   expenses,
@@ -145,7 +149,32 @@ export default function Stats({
       }
       labels.push({ w: s.w, text: MONTHS_SHORT[s.m] });
     }
-    return { cols, level, labels };
+
+    // Summary stats for the side panel.
+    const flat = cols
+      .flat()
+      .filter((c) => c.total != null)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    let daysTracked = 0;
+    let sum = 0;
+    let busiest = { iso: "", total: 0 };
+    let cur = 0;
+    let longest = 0;
+    for (const c of flat) {
+      const t = c.total || 0;
+      if (t > 0) {
+        daysTracked++;
+        sum += t;
+        if (t > busiest.total) busiest = { iso: c.iso, total: t };
+        cur++;
+        if (cur > longest) longest = cur;
+      } else {
+        cur = 0;
+      }
+    }
+    const stats = { daysTracked, busiest, avgActive: daysTracked ? sum / daysTracked : 0, longest };
+
+    return { cols, level, labels, stats };
   }, [totalsByIso]);
 
   return (
@@ -214,30 +243,57 @@ export default function Stats({
       {/* Heatmap */}
       <div className="heatmap">
         <div className="hm-title">Spending activity · last 12 months</div>
-        <div className="hm-scroll">
-          <div className="hm-labels">
-            {heat.labels.map((l) => (
-              <span key={`${l.w}-${l.text}`} className="hm-label" style={{ left: `${l.w * 15}px` }}>
-                {l.text}
-              </span>
-            ))}
+        <div className="hm-body">
+          <div className="hm-scroll">
+            <div className="hm-labels">
+              {heat.labels.map((l) => (
+                <span
+                  key={`${l.w}-${l.text}`}
+                  className="hm-label"
+                  style={{ left: `${(l.w / HEAT_WEEKS) * 100}%` }}
+                >
+                  {l.text}
+                </span>
+              ))}
+            </div>
+            <div className="hm-grid">
+              {heat.cols.map((col, w) => (
+                <div className="hm-col" key={w}>
+                  {col.map((cell) => {
+                    const lv = heat.level(cell.total);
+                    return (
+                      <div
+                        key={cell.iso}
+                        className="hm-cell"
+                        style={{ background: lv < 0 ? "transparent" : HEAT_COLORS[lv] }}
+                        title={lv < 0 ? "" : `${cell.iso}: ${whole(cell.total || 0)}`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="hm-grid">
-            {heat.cols.map((col, w) => (
-              <div className="hm-col" key={w}>
-                {col.map((cell) => {
-                  const lv = heat.level(cell.total);
-                  return (
-                    <div
-                      key={cell.iso}
-                      className="hm-cell"
-                      style={{ background: lv < 0 ? "transparent" : HEAT_COLORS[lv] }}
-                      title={lv < 0 ? "" : `${cell.iso}: ${whole(cell.total || 0)}`}
-                    />
-                  );
-                })}
+
+          <div className="hm-stats">
+            <div className="hm-stat">
+              <div className="hs-value">{heat.stats.daysTracked}</div>
+              <div className="hs-label">days logged</div>
+            </div>
+            <div className="hm-stat">
+              <div className="hs-value">{whole(heat.stats.busiest.total)}</div>
+              <div className="hs-label">
+                {heat.stats.busiest.iso ? `busiest · ${shortDate(heat.stats.busiest.iso)}` : "busiest day"}
               </div>
-            ))}
+            </div>
+            <div className="hm-stat">
+              <div className="hs-value">{whole(heat.stats.avgActive)}</div>
+              <div className="hs-label">avg / day</div>
+            </div>
+            <div className="hm-stat">
+              <div className="hs-value">{heat.stats.longest}</div>
+              <div className="hs-label">longest streak</div>
+            </div>
           </div>
         </div>
         <div className="hm-legend">
