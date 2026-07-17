@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Category, Expense } from "@/lib/types";
+import { MAX_AMOUNT, MAX_TEXT_LEN, type Category, type Expense } from "@/lib/types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -104,6 +104,7 @@ export default function ExpenseForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
+          maxLength={MAX_TEXT_LEN}
           autoFocus={!!onClose && !editing}
         />
       </div>
@@ -116,6 +117,7 @@ export default function ExpenseForm({
             type="number"
             step="0.01"
             min="0"
+            max={MAX_AMOUNT}
             inputMode="decimal"
             placeholder="0.00"
             value={amount}
