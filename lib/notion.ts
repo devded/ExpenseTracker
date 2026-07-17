@@ -2,10 +2,25 @@
 // handler, so the integration token never reaches the browser and there is
 // no CORS problem (the browser talks only to our own /api routes).
 
+import type { Category, Expense, NewExpense } from "./types";
+
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
 export const DB_NAME = "ExpenseTracker";
+
+// Data-column property names. `ensureProperties` guarantees these exact names
+// exist on the database, so reads and writes address them directly. Only the
+// *title* column is resolved dynamically (a pre-existing database the user
+// already had may name its title column anything), which is why the code looks
+// asymmetric: dynamic title, fixed data columns. Centralizing the names here
+// keeps that contract in one place.
+const PROP = {
+  amount: "Amount",
+  category: "Category",
+  date: "Date",
+  notes: "Notes",
+} as const;
 
 export const CATEGORY_OPTIONS = [
   { name: "Food & Dining", color: "orange" },
@@ -20,19 +35,19 @@ export const CATEGORY_OPTIONS = [
 export function expenseSchema(): Record<string, any> {
   return {
     Name: { title: {} },
-    Amount: { number: { format: "lira" } },
-    Category: { select: { options: CATEGORY_OPTIONS.map((c) => ({ ...c })) } },
-    Date: { date: {} },
-    Notes: { rich_text: {} },
+    [PROP.amount]: { number: { format: "lira" } },
+    [PROP.category]: { select: { options: CATEGORY_OPTIONS.map((c) => ({ ...c })) } },
+    [PROP.date]: { date: {} },
+    [PROP.notes]: { rich_text: {} },
   };
 }
 
 // Non-title properties we require to exist, keyed by name → expected type.
 const REQUIRED_DATA_PROPS: Record<string, string> = {
-  Amount: "number",
-  Category: "select",
-  Date: "date",
-  Notes: "rich_text",
+  [PROP.amount]: "number",
+  [PROP.category]: "select",
+  [PROP.date]: "date",
+  [PROP.notes]: "rich_text",
 };
 
 export class NotionError extends Error {
@@ -73,15 +88,6 @@ async function notionFetch(token: string, path: string, options: RequestInit = {
   return data;
 }
 
-export type Expense = {
-  id: string;
-  name: string;
-  amount: number;
-  category: string | null;
-  date: string | null;
-  notes: string;
-};
-
 // ---- Token & identity -----------------------------------------------------
 
 export async function validateToken(token: string): Promise<{ name: string }> {
@@ -100,6 +106,33 @@ function findTitleKey(properties: Record<string, any>): string {
     if ((value as any)?.type === "title") return key;
   }
   return "Name";
+}
+
+// The property names a write needs to resolve (title + select) effectively
+// never change for a given database, so cache them per database id. This keeps
+// createExpense/updateExpense from re-fetching the whole schema on every write.
+// A cold serverless instance simply repopulates the cache on first use.
+type SchemaKeys = { titleKey: string; selectKey: string };
+const schemaKeyCache = new Map<string, SchemaKeys>();
+
+function cacheSchemaKeys(db: any): void {
+  if (!db?.id || !db.properties) return;
+  schemaKeyCache.set(db.id, {
+    titleKey: findTitleKey(db.properties),
+    selectKey: findSelectKey(db.properties),
+  });
+}
+
+async function getSchemaKeys(token: string, databaseId: string): Promise<SchemaKeys> {
+  const cached = schemaKeyCache.get(databaseId);
+  if (cached) return cached;
+  const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
+  const keys: SchemaKeys = {
+    titleKey: findTitleKey(db.properties || {}),
+    selectKey: findSelectKey(db.properties || {}),
+  };
+  schemaKeyCache.set(databaseId, keys);
+  return keys;
 }
 
 async function findExpenseDatabase(token: string): Promise<any | null> {
@@ -176,6 +209,7 @@ export async function ensureDatabase(token: string): Promise<EnsureResult> {
   const existing = await findExpenseDatabase(token);
   if (existing) {
     const added = await ensureProperties(token, existing);
+    cacheSchemaKeys(existing);
     return { databaseId: existing.id, created: false, addedProperties: added };
   }
 
@@ -190,6 +224,7 @@ export async function ensureDatabase(token: string): Promise<EnsureResult> {
   }
 
   const created = await createExpenseDatabase(token, parentId);
+  cacheSchemaKeys(created);
   return {
     databaseId: created.id,
     created: true,
@@ -206,7 +241,7 @@ export async function updateAmountFormat(
 ): Promise<void> {
   await notionFetch(token, `/databases/${databaseId}`, {
     method: "PATCH",
-    body: JSON.stringify({ properties: { Amount: { number: { format } } } }),
+    body: JSON.stringify({ properties: { [PROP.amount]: { number: { format } } } }),
   });
 }
 
@@ -237,22 +272,41 @@ function readExpense(page: any): Expense {
   return {
     id: page.id,
     name,
-    amount: props.Amount?.number ?? 0,
-    category: props.Category?.select?.name ?? null,
-    date: props.Date?.date?.start ?? null,
-    notes: props.Notes?.rich_text?.[0]?.plain_text ?? "",
+    amount: props[PROP.amount]?.number ?? 0,
+    category: props[PROP.category]?.select?.name ?? null,
+    date: props[PROP.date]?.date?.start ?? null,
+    notes: props[PROP.notes]?.rich_text?.[0]?.plain_text ?? "",
   };
 }
 
-export async function listExpenses(token: string, databaseId: string): Promise<Expense[]> {
+// Half-open date window [since, until) on the Date property. Both bounds are
+// optional ISO dates (YYYY-MM-DD); omitting a bound leaves that side unbounded.
+// Filtering server-side keeps us from pulling the entire history on every load.
+export type DateRange = { since?: string; until?: string };
+
+function dateFilter(range: DateRange): any | undefined {
+  const clauses: any[] = [];
+  if (range.since) clauses.push({ property: PROP.date, date: { on_or_after: range.since } });
+  if (range.until) clauses.push({ property: PROP.date, date: { before: range.until } });
+  if (clauses.length === 0) return undefined;
+  return clauses.length === 1 ? clauses[0] : { and: clauses };
+}
+
+export async function listExpenses(
+  token: string,
+  databaseId: string,
+  range: DateRange = {},
+): Promise<Expense[]> {
   const all: Expense[] = [];
   let cursor: string | undefined;
-  // Page through every row so the month-by-month view can reach older months.
+  const filter = dateFilter(range);
+  // Page through every row in the requested window (older months load lazily).
   do {
     const body: any = {
-      sorts: [{ property: "Date", direction: "descending" }],
+      sorts: [{ property: PROP.date, direction: "descending" }],
       page_size: 100,
     };
+    if (filter) body.filter = filter;
     if (cursor) body.start_cursor = cursor;
     const result = await notionFetch(token, `/databases/${databaseId}/query`, {
       method: "POST",
@@ -266,22 +320,20 @@ export async function listExpenses(token: string, databaseId: string): Promise<E
 
 // ---- Category (select) options --------------------------------------------
 
-export type CategoryOption = { id?: string; name: string; color: string };
-
 const NOTION_COLORS = new Set([
   "default", "gray", "brown", "orange", "yellow",
   "green", "blue", "purple", "pink", "red",
 ]);
 
 function findSelectKey(properties: Record<string, any>): string {
-  if (properties?.Category?.type === "select") return "Category";
+  if (properties?.[PROP.category]?.type === "select") return PROP.category;
   for (const [key, value] of Object.entries(properties || {})) {
     if ((value as any)?.type === "select") return key;
   }
-  return "Category";
+  return PROP.category;
 }
 
-export async function getCategories(token: string, databaseId: string): Promise<CategoryOption[]> {
+export async function getCategories(token: string, databaseId: string): Promise<Category[]> {
   const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
   const key = findSelectKey(db.properties || {});
   const options = db.properties?.[key]?.select?.options || [];
@@ -293,8 +345,8 @@ export async function getCategories(token: string, databaseId: string): Promise<
 export async function setCategories(
   token: string,
   databaseId: string,
-  options: CategoryOption[],
-): Promise<CategoryOption[]> {
+  options: Category[],
+): Promise<Category[]> {
   const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
   const key = findSelectKey(db.properties || {});
 
@@ -319,25 +371,21 @@ export async function setCategories(
   return getCategories(token, databaseId);
 }
 
-export type NewExpense = {
-  name: string;
-  amount: number;
-  category: string | null;
-  date: string;
-  notes?: string;
-};
-
+// `titleKey` is passed in because the title column is the one property whose
+// name we don't control; the rest address the fixed PROP names.
 function buildExpenseProperties(input: NewExpense, titleKey: string): Record<string, any> {
   const properties: Record<string, any> = {
     [titleKey]: { title: [{ text: { content: input.name || "Untitled" } }] },
-    Amount: { number: Number.isFinite(input.amount) ? input.amount : 0 },
-    Date: { date: { start: input.date } },
+    [PROP.amount]: { number: Number.isFinite(input.amount) ? input.amount : 0 },
+    [PROP.date]: { date: { start: input.date } },
     // Set (or clear) the category select.
-    Category: input.category ? { select: { name: input.category } } : { select: null },
+    [PROP.category]: input.category ? { select: { name: input.category } } : { select: null },
   };
   // Only touch Notes when explicitly provided (preserves existing notes on edit).
   if (input.notes !== undefined) {
-    properties.Notes = { rich_text: input.notes ? [{ text: { content: input.notes } }] : [] };
+    properties[PROP.notes] = {
+      rich_text: input.notes ? [{ text: { content: input.notes } }] : [],
+    };
   }
   return properties;
 }
@@ -348,8 +396,7 @@ export async function createExpense(
   input: NewExpense,
 ): Promise<Expense> {
   // Look up the real title property name in case the database predates us.
-  const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
-  const titleKey = findTitleKey(db.properties || {});
+  const { titleKey } = await getSchemaKeys(token, databaseId);
 
   const page = await notionFetch(token, "/pages", {
     method: "POST",
@@ -367,8 +414,7 @@ export async function updateExpense(
   pageId: string,
   input: NewExpense,
 ): Promise<Expense> {
-  const db = await notionFetch(token, `/databases/${databaseId}`, { method: "GET" });
-  const titleKey = findTitleKey(db.properties || {});
+  const { titleKey } = await getSchemaKeys(token, databaseId);
 
   const page = await notionFetch(token, `/pages/${pageId}`, {
     method: "PATCH",

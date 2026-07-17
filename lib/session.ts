@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
+import type { Prefs } from "./types";
 
 export const TOKEN_COOKIE = "notion_token";
 export const DB_COOKIE = "notion_db";
@@ -8,7 +9,6 @@ export const PREFS_COOKIE = "prefs";
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export type Prefs = { currency: string; budget: number };
 export const DEFAULT_PREFS: Prefs = { currency: "TRY", budget: 40000 };
 
 export function getSession(): { token: string | null; databaseId: string | null } {
