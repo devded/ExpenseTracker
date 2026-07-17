@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureDatabase, validateToken } from "@/lib/notion";
-import { fail } from "@/lib/api";
+import { assertSameOrigin, fail } from "@/lib/api";
 import { writeSession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -10,6 +10,12 @@ export const dynamic = "force-dynamic";
 // Validates the integration token, ensures the ExpenseTracker database exists
 // with the right schema, then stores the token in an httpOnly cookie.
 export async function POST(req: Request) {
+  try {
+    assertSameOrigin(req);
+  } catch (err) {
+    return fail(err);
+  }
+
   let token: string;
   try {
     const body = await req.json();

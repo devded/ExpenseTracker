@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCategories, setCategories } from "@/lib/notion";
-import { fail, requireSession } from "@/lib/api";
+import { assertSameOrigin, fail, requireSession } from "@/lib/api";
 import type { Category } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -20,6 +20,7 @@ export async function GET() {
 // PUT /api/notion/categories  { categories: [{ id?, name, color }] }
 export async function PUT(req: Request) {
   try {
+    assertSameOrigin(req);
     const { token, databaseId } = requireSession();
     const body = await req.json();
     const incoming: Category[] = Array.isArray(body?.categories) ? body.categories : [];

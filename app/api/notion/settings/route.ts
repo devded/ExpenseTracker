@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateAmountFormat } from "@/lib/notion";
+import { assertSameOrigin, fail } from "@/lib/api";
 import { DEFAULT_PREFS, getPrefs, getSession, writePrefs } from "@/lib/session";
 import { currencyByCode } from "@/lib/currencies";
 import type { Prefs } from "@/lib/types";
@@ -14,6 +15,12 @@ export async function GET() {
 
 // PUT /api/notion/settings  { currency, budget }
 export async function PUT(req: Request) {
+  try {
+    assertSameOrigin(req);
+  } catch (err) {
+    return fail(err);
+  }
+
   let body: any;
   try {
     body = await req.json();

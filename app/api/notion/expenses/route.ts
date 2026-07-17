@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createExpense, listExpenses } from "@/lib/notion";
-import { fail, requireSession } from "@/lib/api";
+import { assertSameOrigin, fail, parseExpenseInput, requireSession } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,26 +32,10 @@ export async function GET(req: Request) {
 // POST /api/notion/expenses — add a new expense row.
 export async function POST(req: Request) {
   try {
+    assertSameOrigin(req);
     const { token, databaseId } = requireSession();
-    const body = await req.json();
-
-    const name = String(body?.name || "").trim();
-    const amount = Number(body?.amount);
-    const category = body?.category ? String(body.category) : null;
-    const date = String(body?.date || "").trim();
-
-    if (!name) return NextResponse.json({ error: "Description is required." }, { status: 400 });
-    if (!Number.isFinite(amount) || amount < 0)
-      return NextResponse.json({ error: "Enter a valid amount." }, { status: 400 });
-    if (!date) return NextResponse.json({ error: "Date is required." }, { status: 400 });
-
-    const expense = await createExpense(token, databaseId, {
-      name,
-      amount,
-      category,
-      date,
-      notes: body?.notes ? String(body.notes) : undefined,
-    });
+    const input = parseExpenseInput(await req.json());
+    const expense = await createExpense(token, databaseId, input);
     return NextResponse.json({ expense });
   } catch (err) {
     return fail(err);
