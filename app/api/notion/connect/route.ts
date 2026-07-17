@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { ensureDatabase, NotionError, validateToken } from "@/lib/notion";
+import { ensureDatabase, validateToken } from "@/lib/notion";
+import { fail } from "@/lib/api";
 import { writeSession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -35,8 +36,6 @@ export async function POST(req: Request) {
     writeSession(res, token, ensured.databaseId);
     return res;
   } catch (err) {
-    const status = err instanceof NotionError ? err.status : 500;
-    const message = err instanceof Error ? err.message : "Something went wrong.";
-    return NextResponse.json({ error: message }, { status });
+    return fail(err);
   }
 }

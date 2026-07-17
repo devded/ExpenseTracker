@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server";
-import { deleteExpense, NotionError, updateExpense } from "@/lib/notion";
-import { getSession } from "@/lib/session";
+import { deleteExpense, updateExpense } from "@/lib/notion";
+import { fail, requireSession } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function requireSession() {
-  const { token, databaseId } = getSession();
-  if (!token || !databaseId) throw new NotionError("Not connected to Notion.", 401);
-  return { token, databaseId };
-}
-
-function fail(err: unknown) {
-  const status = err instanceof NotionError ? err.status : 500;
-  const message = err instanceof Error ? err.message : "Something went wrong.";
-  return NextResponse.json({ error: message }, { status });
-}
 
 // PATCH /api/notion/expenses/:id — update an expense.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

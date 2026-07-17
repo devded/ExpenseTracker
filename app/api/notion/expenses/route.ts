@@ -1,29 +1,28 @@
 import { NextResponse } from "next/server";
-import { createExpense, listExpenses, NotionError } from "@/lib/notion";
-import { getSession } from "@/lib/session";
+import { createExpense, listExpenses } from "@/lib/notion";
+import { fail, requireSession } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function requireSession() {
-  const { token, databaseId } = getSession();
-  if (!token || !databaseId) {
-    throw new NotionError("Not connected to Notion.", 401);
-  }
-  return { token, databaseId };
+// Accept only well-formed ISO dates (YYYY-MM-DD) as filter bounds; ignore junk
+// so a malformed query param can never be forwarded into the Notion filter.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function isoParam(value: string | null): string | undefined {
+  return value && ISO_DATE.test(value) ? value : undefined;
 }
 
-function fail(err: unknown) {
-  const status = err instanceof NotionError ? err.status : 500;
-  const message = err instanceof Error ? err.message : "Something went wrong.";
-  return NextResponse.json({ error: message }, { status });
-}
-
-// GET /api/notion/expenses — list rows from the ExpenseTracker database.
-export async function GET() {
+// GET /api/notion/expenses[?since=YYYY-MM-DD&until=YYYY-MM-DD]
+// Lists rows from the ExpenseTracker database, optionally within a date window.
+export async function GET(req: Request) {
   try {
     const { token, databaseId } = requireSession();
-    const expenses = await listExpenses(token, databaseId);
+    const { searchParams } = new URL(req.url);
+    const range = {
+      since: isoParam(searchParams.get("since")),
+      until: isoParam(searchParams.get("until")),
+    };
+    const expenses = await listExpenses(token, databaseId, range);
     return NextResponse.json({ expenses });
   } catch (err) {
     return fail(err);

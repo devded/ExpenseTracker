@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { updateAmountFormat } from "@/lib/notion";
-import { DEFAULT_PREFS, getPrefs, getSession, writePrefs, type Prefs } from "@/lib/session";
+import { DEFAULT_PREFS, getPrefs, getSession, writePrefs } from "@/lib/session";
 import { currencyByCode } from "@/lib/currencies";
+import type { Prefs } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
