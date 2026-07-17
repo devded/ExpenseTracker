@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { swatchColor } from "@/lib/colors";
 import { useTheme } from "@/lib/theme";
+import type { Expense } from "@/lib/types";
 
-type Expense = { id: string; amount: number; date: string | null; category: string | null };
+// Stats only needs these fields of an expense.
+type StatExpense = Pick<Expense, "id" | "amount" | "date" | "category">;
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -66,7 +68,7 @@ export default function Stats({
   month,
   colorOf,
 }: {
-  expenses: Expense[];
+  expenses: StatExpense[];
   symbol: string;
   year: number;
   month: number; // 1-based, drives the daily chart

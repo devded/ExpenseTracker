@@ -4,19 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { pillStyle } from "@/lib/colors";
 import { symbolFor } from "@/lib/currencies";
 import { useTheme } from "@/lib/theme";
-import CategoriesModal, { type Cat } from "./CategoriesModal";
-import SettingsModal, { type Prefs } from "./SettingsModal";
+import CategoriesModal from "./CategoriesModal";
+import SettingsModal from "./SettingsModal";
 import ExpenseForm from "./ExpenseForm";
 import Stats from "./Stats";
-
-type Expense = {
-  id: string;
-  name: string;
-  amount: number;
-  category: string | null;
-  date: string | null;
-  notes: string;
-};
+import type { Category, Expense, Prefs } from "@/lib/types";
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -36,6 +28,19 @@ function formatDate(iso: string | null) {
 function daysInMonth(year: number, month1: number) {
   return new Date(year, month1, 0).getDate();
 }
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+// First day of the selected month as an ISO date (the lower bound we load to).
+function monthStartIso(year: number, month1: number) {
+  return `${year}-${pad2(month1)}-01`;
+}
+// Merge freshly fetched rows into the existing set, deduping by id.
+function mergeById(prev: Expense[], incoming: Expense[]): Expense[] {
+  const map = new Map(prev.map((e) => [e.id, e]));
+  for (const e of incoming) map.set(e.id, e);
+  return [...map.values()];
+}
 
 export default function Dashboard({
   workspace,
@@ -45,7 +50,7 @@ export default function Dashboard({
   onDisconnect: () => void;
 }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Cat[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [prefs, setPrefs] = useState<Prefs>({ currency: "TRY", budget: 40000 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +65,25 @@ export default function Dashboard({
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
+
+  // Lower bound of the expense window currently loaded into `expenses`. The
+  // initial fetch only pulls what the insights need (roughly the last year —
+  // the heatmap spans ~53 weeks and the week comparison is anchored to today);
+  // navigating to an older month lazily extends the window backward.
+  const insightsStart = useMemo(
+    () => {
+      // First day of the month 11 back (12-month window incl. current); the
+      // Date constructor normalizes the year rollover for us.
+      const d = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      return monthStartIso(d.getFullYear(), d.getMonth() + 1);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const [loadedSince, setLoadedSince] = useState(insightsStart);
+  // Mirrors `loadedSince` synchronously so rapid month steps claim contiguous,
+  // non-overlapping ranges instead of racing on stale state.
+  const watermarkRef = useRef(insightsStart);
 
   const [showAdd, setShowAdd] = useState(false); // mobile add-expense sheet
   const [editing, setEditing] = useState<Expense | null>(null); // expense being edited
@@ -80,7 +104,7 @@ export default function Dashboard({
     setError(null);
     try {
       const [exRes, catRes, setRes] = await Promise.all([
-        fetch("/api/notion/expenses"),
+        fetch(`/api/notion/expenses?since=${insightsStart}`),
         fetch("/api/notion/categories"),
         fetch("/api/notion/settings"),
       ]);
@@ -107,6 +131,34 @@ export default function Dashboard({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pull in older rows the first time the user navigates before the loaded
+  // window. Each call claims [monthStart, watermark) up front so overlapping
+  // steps fetch contiguous, non-overlapping slices.
+  async function ensureMonthLoaded(y: number, m: number) {
+    const start = monthStartIso(y, m);
+    if (start >= watermarkRef.current) return; // already within the loaded window
+    const until = watermarkRef.current;
+    watermarkRef.current = start;
+    setLoadedSince(start);
+    try {
+      const res = await fetch(`/api/notion/expenses?since=${start}&until=${until}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load older expenses.");
+      setExpenses((prev) => mergeById(prev, data.expenses));
+    } catch (e) {
+      // Roll the watermark back so the slice is retried on the next visit.
+      watermarkRef.current = until;
+      setLoadedSince(until);
+      setError(e instanceof Error ? e.message : "Failed to load older expenses.");
+    }
+  }
+
+  // Whenever the selected month changes, make sure its rows are loaded.
+  useEffect(() => {
+    ensureMonthLoaded(year, month);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month]);
 
   // Close the account menu on outside click or Escape.
   useEffect(() => {
@@ -347,7 +399,7 @@ export default function Dashboard({
           <div className="panel-head">
             <h2 className="section-title">{monthLabel}</h2>
             <span className="muted">
-              {loading ? "…" : `${monthRows.length} in month · ${expenses.length} all time`}
+              {loading ? "…" : `${monthRows.length} in month · ${expenses.length} loaded`}
             </span>
           </div>
 

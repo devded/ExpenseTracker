@@ -2,25 +2,24 @@
 
 import { useState } from "react";
 import { NOTION_COLORS, swatchColor } from "@/lib/colors";
-
-export type Cat = { id?: string; name: string; color: string };
+import type { Category } from "@/lib/types";
 
 export default function CategoriesModal({
   initial,
   onClose,
   onSaved,
 }: {
-  initial: Cat[];
+  initial: Category[];
   onClose: () => void;
-  onSaved: (cats: Cat[]) => void;
+  onSaved: (cats: Category[]) => void;
 }) {
-  const [rows, setRows] = useState<Cat[]>(
+  const [rows, setRows] = useState<Category[]>(
     initial.length ? initial.map((c) => ({ ...c })) : [{ name: "", color: "blue" }],
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function update(i: number, patch: Partial<Cat>) {
+  function update(i: number, patch: Partial<Category>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
   function remove(i: number) {

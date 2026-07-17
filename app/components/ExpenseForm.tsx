@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Cat } from "./CategoriesModal";
-
-type Expense = {
-  id: string;
-  name: string;
-  amount: number;
-  category: string | null;
-  date: string | null;
-  notes?: string;
-};
+import type { Category, Expense } from "@/lib/types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -24,10 +15,10 @@ export default function ExpenseForm({
   onDeleted,
   onClose,
 }: {
-  categories: Cat[];
+  categories: Category[];
   symbol: string;
   initial?: Expense | null; // present → edit mode
-  onSaved: (expense: any) => void;
+  onSaved: (expense: Expense) => void;
   onDeleted?: (id: string) => void;
   onClose?: () => void;
 }) {

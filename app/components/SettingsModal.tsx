@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { CURRENCIES, symbolFor } from "@/lib/currencies";
-
-export type Prefs = { currency: string; budget: number };
+import type { Prefs } from "@/lib/types";
 
 export default function SettingsModal({
   initial,
