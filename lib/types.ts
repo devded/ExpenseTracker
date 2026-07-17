@@ -28,3 +28,11 @@ export type Category = { id?: string; name: string; color: string };
 
 // Per-user preferences (stored in the `prefs` cookie).
 export type Prefs = { currency: string; budget: number };
+
+// Input bounds, shared by the server validators and the client form so both
+// agree. Kept here (a dependency-free module) so the client can import them
+// without pulling in server-only code. MAX_TEXT_LEN matches Notion's 2000-char
+// limit for a single title/rich-text value; MAX_AMOUNT is a sane ceiling well
+// below anything a real expense would reach.
+export const MAX_TEXT_LEN = 2000;
+export const MAX_AMOUNT = 1_000_000_000_000; // 1e12
