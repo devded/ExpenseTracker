@@ -7,7 +7,7 @@ import type { Category, Expense, NewExpense } from "./types";
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
-export const DB_NAME = "ExpenseTracker";
+export const DB_NAME = "Notionance";
 
 // Data-column property names. `ensureProperties` guarantees these exact names
 // exist on the database, so reads and writes address them directly. Only the
@@ -30,7 +30,7 @@ export const CATEGORY_OPTIONS = [
   { name: "Shopping", color: "purple" },
 ] as const;
 
-// The property schema the ExpenseTracker database must have.
+// The property schema the Notionance database must have.
 // `Name` is the title column; the rest are data columns.
 export function expenseSchema(): Record<string, any> {
   return {
@@ -202,7 +202,7 @@ export type EnsureResult = {
   addedProperties: string[];
 };
 
-// Find the ExpenseTracker database (or create it) and make sure it has every
+// Find the Notionance database (or create it) and make sure it has every
 // property the app needs. This is the "check availability, otherwise create"
 // step the app runs right after a user connects.
 export async function ensureDatabase(token: string): Promise<EnsureResult> {
@@ -218,7 +218,7 @@ export async function ensureDatabase(token: string): Promise<EnsureResult> {
     throw new NotionError(
       "No page is shared with this integration yet. Open a Notion page, click " +
         "“···” → Connections → add your integration, then reconnect. The " +
-        "ExpenseTracker database will be created inside that page.",
+        "Notionance database will be created inside that page.",
       400,
     );
   }

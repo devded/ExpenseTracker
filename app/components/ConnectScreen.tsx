@@ -30,9 +30,9 @@ export default function ConnectScreen({
       }
       setOk(
         data.created
-          ? `Created the ExpenseTracker database in ${data.workspace}.`
+          ? `Created the Notionance database in ${data.workspace}.`
           : data.addedProperties?.length
-            ? `Found ExpenseTracker and added: ${data.addedProperties.join(", ")}.`
+            ? `Found Notionance and added: ${data.addedProperties.join(", ")}.`
             : `Connected to ${data.workspace}.`,
       );
       // Brief pause so the success note is visible before the dashboard loads.
@@ -50,8 +50,8 @@ export default function ConnectScreen({
         <div className="glyph">₤</div>
         <h1>Connect your Notion</h1>
         <p className="lede">
-          Ledger stores every expense in a database inside your own Notion workspace. Paste an
-          integration token and we&apos;ll find your <strong>ExpenseTracker</strong> database — or
+          Notionance stores every expense in a database inside your own Notion workspace. Paste an
+          integration token and we&apos;ll find your <strong>Notionance</strong> database — or
           create it for you with the right columns.
         </p>
 

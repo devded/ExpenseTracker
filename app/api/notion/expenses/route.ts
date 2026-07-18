@@ -13,7 +13,7 @@ function isoParam(value: string | null): string | undefined {
 }
 
 // GET /api/notion/expenses[?since=YYYY-MM-DD&until=YYYY-MM-DD]
-// Lists rows from the ExpenseTracker database, optionally within a date window.
+// Lists rows from the Notionance database, optionally within a date window.
 export async function GET(req: Request) {
   try {
     const { token, databaseId } = requireSession();

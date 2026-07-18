@@ -269,7 +269,7 @@ export default function Dashboard({
         <div className="brand-mark">
           <div className="glyph">₤</div>
           <div>
-            <div className="name">Ledger</div>
+            <div className="name">Notionance</div>
             <div className="sub">Expense Tracker</div>
           </div>
         </div>
@@ -481,7 +481,7 @@ export default function Dashboard({
         </section>
       </div>
 
-      <footer>Ledger · backed by your Notion workspace</footer>
+      <footer>Notionance · backed by your Notion workspace</footer>
 
       {/* Mobile bottom tab bar: Home / Insights with a raised center Add button */}
       <nav className="tabbar" aria-label="Primary">

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
 
-export const THEME_KEY = "ledger-theme";
+export const THEME_KEY = "notionance-theme";
 
 // Read the theme the pre-paint script already applied to <html data-theme>.
 function current(): Theme {

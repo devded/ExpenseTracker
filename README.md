@@ -1,7 +1,7 @@
-# Ledger — Expense Tracker
+# Notionance — Expense Tracker
 
 A calm, editorial expense tracker that uses **your own Notion workspace as the database**. Users
-connect by pasting a Notion integration token; the app finds — or creates — an `ExpenseTracker`
+connect by pasting a Notion integration token; the app finds — or creates — an `Notionance`
 database, then reads and writes every expense through server-side API routes. The token never
 touches the browser and there are **no CORS issues** with the Notion API.
 
@@ -34,7 +34,7 @@ language: warm parchment canvas, a single ink-blue accent, one serif throughout.
 
 - **Bring-your-own database** — every expense is stored in the user's Notion workspace, not on our
   servers. Nothing to host, nothing to back up.
-- **Zero-setup provisioning** — on connect, the app searches for an `ExpenseTracker` database. If
+- **Zero-setup provisioning** — on connect, the app searches for an `Notionance` database. If
   it exists, any missing columns are added; if it doesn't, it's created for you.
 - **Self-healing sessions** — if the stored database is later deleted or unshared, the app
   automatically re-finds or re-creates it instead of getting stuck on a dead reference.
@@ -128,10 +128,10 @@ npm run lint    # next lint
    a place to create the database (and access to read/write it).
 3. Paste the secret into the app's connect screen.
 
-On success the app either finds your existing `ExpenseTracker` database or creates one inside the
+On success the app either finds your existing `Notionance` database or creates one inside the
 first page shared with the integration.
 
-> **Reusing an existing database:** if you already have an `ExpenseTracker` database, share **its**
+> **Reusing an existing database:** if you already have an `Notionance` database, share **its**
 > page with the integration before connecting so the app reuses it instead of creating a new one.
 > Matching is by title (case-insensitive).
 
@@ -139,7 +139,7 @@ first page shared with the integration.
 
 ## Database schema
 
-The app creates / maintains a Notion database named **`ExpenseTracker`** with these properties:
+The app creates / maintains a Notion database named **`Notionance`** with these properties:
 
 | Property | Type | Notes |
 | --- | --- | --- |

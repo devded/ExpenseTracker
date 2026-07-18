@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // POST /api/notion/connect  { token }
-// Validates the integration token, ensures the ExpenseTracker database exists
+// Validates the integration token, ensures the Notionance database exists
 // with the right schema, then stores the token in an httpOnly cookie.
 export async function POST(req: Request) {
   try {
